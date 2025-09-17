@@ -11,6 +11,11 @@ import { getThemeFromEnv } from './utils/getThemeFromEnv';
 import { LiveAnnouncer } from '~/a11y';
 import { router } from './routes';
 
+import { ClerkProvider, SignedIn, SignedOut, SignIn } from "@clerk/clerk-react";
+
+// مفتاح Clerk من env
+const clerkPubKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
 const App = () => {
   const { setError } = useApiErrorBoundary();
 
@@ -24,37 +29,41 @@ const App = () => {
     }),
   });
 
-  // Load theme from environment variables if available
   const envTheme = getThemeFromEnv();
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <RecoilRoot>
-        <LiveAnnouncer>
-          <ThemeProvider
-            // Only pass initialTheme and themeRGB if environment theme exists
-            // This allows localStorage values to persist when no env theme is set
-            {...(envTheme && { initialTheme: 'system', themeRGB: envTheme })}
-          >
-            {/* The ThemeProvider will automatically:
-                1. Apply dark/light mode classes
-                2. Apply custom theme colors if envTheme is provided
-                3. Otherwise use stored theme preferences from localStorage
-                4. Fall back to default theme colors if nothing is stored */}
-            <RadixToast.Provider>
-              <ToastProvider>
-                <DndProvider backend={HTML5Backend}>
-                  <RouterProvider router={router} />
-                  <ReactQueryDevtools initialIsOpen={false} position="top-right" />
-                  <Toast />
-                  <RadixToast.Viewport className="pointer-events-none fixed inset-0 z-[1000] mx-auto my-2 flex max-w-[560px] flex-col items-stretch justify-start md:pb-5" />
-                </DndProvider>
-              </ToastProvider>
-            </RadixToast.Provider>
-          </ThemeProvider>
-        </LiveAnnouncer>
-      </RecoilRoot>
-    </QueryClientProvider>
+    <ClerkProvider publishableKey={clerkPubKey}>
+      <QueryClientProvider client={queryClient}>
+        <RecoilRoot>
+          <LiveAnnouncer>
+            <ThemeProvider {...(envTheme && { initialTheme: 'system', themeRGB: envTheme })}>
+              <RadixToast.Provider>
+                <ToastProvider>
+                  <DndProvider backend={HTML5Backend}>
+                    
+                    {/* لو المستخدم مسجل دخول */}
+                    <SignedIn>
+                      <RouterProvider router={router} />
+                    </SignedIn>
+
+                    {/* لو لسه مش مسجل دخول */}
+                    <SignedOut>
+                      <div className="flex items-center justify-center h-screen">
+                        <SignIn routing="hash" />
+                      </div>
+                    </SignedOut>
+
+                    <ReactQueryDevtools initialIsOpen={false} position="top-right" />
+                    <Toast />
+                    <RadixToast.Viewport className="pointer-events-none fixed inset-0 z-[1000] mx-auto my-2 flex max-w-[560px] flex-col items-stretch justify-start md:pb-5" />
+                  </DndProvider>
+                </ToastProvider>
+              </RadixToast.Provider>
+            </ThemeProvider>
+          </LiveAnnouncer>
+        </RecoilRoot>
+      </QueryClientProvider>
+    </ClerkProvider>
   );
 };
 
@@ -66,9 +75,7 @@ export default () => (
       allow="autoplay"
       id="audio"
       title="audio-silence"
-      style={{
-        display: 'none',
-      }}
+      style={{ display: 'none' }}
     />
   </ScreenshotProvider>
 );
